@@ -1,6 +1,11 @@
 #!/usr/bin/python3.4
 # -*- coding: utf-8 -*-
 
+
+# TODO: create html directory as needed.
+# TODO: create recipes directory as needed.
+# TODO: Warn on unsupported Python versions.
+
 from lxml.html import fromstring, tostring, parse
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -9,6 +14,8 @@ import re
 import os
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
+# TODO: Check env variables and print helpful warning when missing.
 
 userName = os.environ['MEALBOARD_USER']
 userPin = os.environ['MEALBOARD_PIN']
@@ -362,11 +369,13 @@ def main():
                                     recipeHtmlUrl, session)
                                 if content is not None:
 
-                                    # save orginal html page
-                                    fileName = "./html/{0}.html".format(
-                                        recipeData['fileName'])
-                                    with open(fileName, 'w', encoding="utf-8") as fp:
-                                        fp.write(content)
+                                    # If we want to save the original, HTML recipe
+                                    # TODO: Maybe make this a flag/option?
+                                    if False:
+                                        fileName = "./html/{0}.html".format(
+                                            recipeData['fileName'])
+                                        with open(fileName, 'w', encoding="utf-8") as fp:
+                                            fp.write(content)
 
                                     # parse and convert recipe html page
                                     recipeHtml = parseRecipeHtml(
