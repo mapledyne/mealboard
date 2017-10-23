@@ -6,7 +6,6 @@
 # TODO(Michael): Warn on unsupported Python versions.
 
 import argparse
-import io
 try:
     from lxml.html import fromstring
 except ImportError:
@@ -398,7 +397,7 @@ def main():
                                     fileName = "./recipes/{0}.html".format(
                                         recipeData['fileName']
                                     )
-                                    with io.open(fileName, 'w', encoding='utf-8') as fp:
+                                    with open(fileName, 'w', encoding='utf-8') as fp:
                                         fp.write(recipeHtml)
 
 
