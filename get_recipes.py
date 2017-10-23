@@ -2,30 +2,43 @@
 # -*- coding: utf-8 -*-
 
 
-# TODO: create html directory as needed.
-# TODO: create recipes directory as needed.
-# TODO: Warn on unsupported Python versions.
+# TODO(Michael): create html directory as needed.
+# TODO(Michael): Warn on unsupported Python versions.
 
-from lxml.html import fromstring, tostring, parse
-from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
-import requests
-import re
+import argparse
+import io
+try:
+    from lxml.html import fromstring
+except ImportError:
+    print('lxml python module must be installed for this script to work.')
+    print('Install this module and re-run this script.')
+    print('Typically something like "pip install lxml" should work.')
+    quit()
 import os
+import re
+try:
+    import requests
+    from requests.adapters import HTTPAdapter
+    from requests.packages.urllib3.exceptions import InsecureRequestWarning
+except ImportError:
+    print('requests python module must be installed for this script to work.')
+    print('Install this module and re-run this script.')
+    print('Typically something like "pip install requests" should work.')
+    quit()
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-# TODO: Check env variables and print helpful warning when missing.
+# TODO(Michael): Check env variables and print helpful warning when missing.
 
 userName = os.environ['MEALBOARD_USER']
 userPin = os.environ['MEALBOARD_PIN']
 
 
 def login(url, loginData):
-    """ Login into mealboard and create variable session,
-        to keep all cookies necessary for obtaining all recipes
-    """
+    """Login into mealboard and create session.
 
+    Store the session cookie so we can use it for getting the recipes.
+    """
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0Win64; x64) \
         AppleWebKit/537.36 (KHTML, like Gecko)\
@@ -61,9 +74,7 @@ def login(url, loginData):
 
 
 def getHtml(url, session):
-    """
-        Simple Get requests to get all html pages
-    """
+    """Use a simple Get requests to get all html pages."""
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
         'AppleWebKit/537.36 (KHTML, like Gecko) '
@@ -382,10 +393,12 @@ def main():
                                         content, recipeData)
 
                                     # Save new html page
+                                    if not os.path.exists('./recipes'):
+                                        os.makedirs('./recipes')
                                     fileName = "./recipes/{0}.html".format(
                                         recipeData['fileName']
-                                        )
-                                    with open(fileName, 'w', encoding='utf-8') as fp:
+                                    )
+                                    with io.open(fileName, 'w', encoding='utf-8') as fp:
                                         fp.write(recipeHtml)
 
 
