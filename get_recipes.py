@@ -1,11 +1,21 @@
-#!/usr/bin/python3.4
-# -*- coding: utf-8 -*-
+"""Mealboard recipe exporter.
 
-
-# TODO(Michael): create html directory as needed.
-# TODO(Michael): Warn on unsupported Python versions.
-
+This script goes to the Mealboard site and downloads all of your recipes
+and puts them into a standarized format. See README.md for more details.
+"""
+# The straightforward imports:
 import argparse
+import os
+import re
+import sys
+
+if sys.version_info < (3, 4):
+    print('WARNING: This script is only tested to work with '
+          'Python 3.4 and above.\nYou seem to be running version {}.{}.\n'
+          'If you run into errors, please re-run with a higher version of '
+          'Python.'.format(sys.version_info.major, sys.version_info.minor))
+
+# The imports that may not yet be installed:
 try:
     from lxml.html import fromstring
 except ImportError:
@@ -13,8 +23,6 @@ except ImportError:
     print('Install this module and re-run this script.')
     print('Typically something like "pip install lxml" should work.')
     quit()
-import os
-import re
 try:
     import requests
     from requests.adapters import HTTPAdapter
@@ -27,11 +35,7 @@ except ImportError:
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-# TODO(Michael): Check env variables and print helpful warning when missing.
-
-userName = os.environ['MEALBOARD_USER']
-userPin = os.environ['MEALBOARD_PIN']
-
+mealboard_url = 'http://mealboard.macminicolo.net/mealboard/'
 
 def login(url, loginData):
     """Login into mealboard and create session.
@@ -45,7 +49,7 @@ def login(url, loginData):
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,\
         image/webp,*/*;q=0.8',
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Referer': 'http://mealboard.macminicolo.net/mealboard/login.jsp',
+        'Referer': '{}login.jsp'.format(mealboard_url),
     }
 
     s = requests.Session()
@@ -81,7 +85,7 @@ def getHtml(url, session):
         'Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,'
         'image/webp,*/*;q=0.8',
-        'Referer': 'http://mealboard.macminicolo.net/mealboard/recipeedit.jsp'
+        'Referer': '{}recipeedit.jsp'.format(mealboard_url)
     }
 
     try:
@@ -104,12 +108,10 @@ def getHtml(url, session):
 
 
 def parseRecipeEditPage(content, recipeData):
-    """
-        Parse and extract
-        Category / Makes / Prep Time / Cook Time
-        from Edit Page
-    """
+    """Parse one recipe.
 
+    Parse and extract Category, Makes, Prep Time, Cook Time from Edit Page
+    """
     html = fromstring(content)
 
     # Get categories
@@ -178,10 +180,11 @@ def parseRecipeEditPage(content, recipeData):
 
 
 def parseRecipeHtml(content, recipeData):
-    """ parseRecipe(content, recipeName)
-        parse missing informations and convert recipe html code
-        into new format. using http://schema.org/Recipe """
+    """Parse one recipe.
 
+    Parse missing informations and convert recipe html code
+    into new format. using http://schema.org/Recipe
+    """
     html = fromstring(content)
 
     # Load images and generate html code
@@ -190,10 +193,8 @@ def parseRecipeHtml(content, recipeData):
 
         images = html.xpath('//div[@class="photo"]/img/@src')
         for image in images:
-            image = "<img itemprop=\"image\" src=\"{0}\" alt=\"{0}\" />".format(
-                    image,
-                    recipeData['Name']
-                )
+            img_search = "<img itemprop=\"image\" src=\"{0}\" alt=\"{0}\" />"
+            image = img_search.format(image, recipeData['Name'])
             recipeImages.append(image)
 
         recipeData.update({'Images': "\n".join(recipeImages)})
@@ -294,16 +295,20 @@ def parseRecipeHtml(content, recipeData):
     return recipeHtml
 
 
-def main():
+def main(user, pin, location):
+    """Do the actual work.
 
+    This is the primary work funtion that pulls the recipes from the site
+    and re-formats them, then saves the results.
+    """
     loginData = {
-        'username': userName,
-        'pin': userPin
+        'username': user,
+        'pin': pin
     }
 
     # Login
     content, session = login(
-        'http://mealboard.macminicolo.net/mealboard/loginsubmit.jsp',
+        '{}loginsubmit.jsp'.format(mealboard_url),
         loginData)
 
     if content is None:
@@ -313,9 +318,7 @@ def main():
             print('login OK')
 
             # Get recipes list
-            content, session = getHtml(
-                'http://mealboard.macminicolo.net/mealboard/recipelist.jsp'
-                '?RECIPE_NAME=NEW%20RECIPE', session)
+            content, session = getHtml('{}recipelist.jsp?RECIPE_NAME=NEW%20RECIPE'.format(mealboard_url), session)
 
             if content is not None:
                 if 'recipelist.css' in content:
@@ -358,7 +361,8 @@ def main():
 
                                 # Load "Edit Page" to get propper values for
                                 # Category / Makes / PrepTime / CookTime
-                                recipeEditUrl = "http://mealboard.macminicolo.net/mealboard/recipeform.jsp?RECIPE_NAME={0}".format(
+                                recipeEditUrl = "{}recipeform.jsp?RECIPE_NAME={}".format(
+                                    mealboard_url,
                                     recipeData['Name'])
                                 content, session = getHtml(
                                     recipeEditUrl,
@@ -371,7 +375,8 @@ def main():
                                     )
 
                                 # Download html page for recipe
-                                recipeHtmlUrl = "http://mealboard.macminicolo.net/mealboard/recipeview.jsp?RECIPE_NAME={0}".format(
+                                recipeHtmlUrl = "{}recipeview.jsp?RECIPE_NAME={}".format(
+                                    mealboard_url,
                                     recipeData['Name'])
                                 recipeData.update({'sourceUrl': recipeHtmlUrl})
 
@@ -380,7 +385,7 @@ def main():
                                 if content is not None:
 
                                     # If we want to save the original, HTML recipe
-                                    # TODO: Maybe make this a flag/option?
+                                    # TODO(Michael): Maybe make this a flag/option?
                                     if False:
                                         fileName = "./html/{0}.html".format(
                                             recipeData['fileName'])
@@ -392,9 +397,10 @@ def main():
                                         content, recipeData)
 
                                     # Save new html page
-                                    if not os.path.exists('./recipes'):
-                                        os.makedirs('./recipes')
-                                    fileName = "./recipes/{0}.html".format(
+                                    if not os.path.exists(location):
+                                        os.makedirs(location)
+                                    fileName = "{}/{}.html".format(
+                                        location,
                                         recipeData['fileName']
                                     )
                                     with open(fileName, 'w', encoding='utf-8') as fp:
@@ -402,4 +408,40 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    user_default = 'MEALBOARD_USER env variable'
+    pin_default = 'MEALBOARD_PIN env variable'
+
+    parser.add_argument('-u',
+                        action='store',
+                        dest='user',
+                        default=user_default,
+                        help='Mealboard user to use to connect')
+    parser.add_argument('-p',
+                        action='store',
+                        dest='pin',
+                        default=pin_default,
+                        help='Mealboard PIN to use to connect')
+    parser.add_argument('-l',
+                        action='store',
+                        dest='location',
+                        default='./recipes',
+                        help='Location to store recipes')
+    results = parser.parse_args()
+
+    if (results.user == user_default):
+        if ('MEALBOARD_USER' in os.environ):
+            results.user = os.environ['MEALBOARD_USER']
+        else:
+            print('Mealboard user not set. Use the -u flag to set this, or '
+                  'set the\nMEALBOARD_USER environment variable.')
+            quit()
+    if (results.pin == pin_default):
+        if ('MEALBOARD_PIN' in os.environ):
+            results.pin = os.environ['MEALBOARD_PIN']
+        else:
+            print('Mealboard pin not set. Use the -p flag to set this, or '
+                  'set the\nMEALBOARD_PIN environment variable.')
+            quit()
+
+    main(results.user, results.pin, results.location)
