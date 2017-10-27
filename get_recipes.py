@@ -37,6 +37,20 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 mealboard_url = 'http://mealboard.macminicolo.net/mealboard/'
 
+
+class Recipe(object):
+    """One recipe."""
+
+    def __init__(self, recipe_name):
+        """Initialize the recipe."""
+        self.html = ''
+        self.name = recipe_name
+
+    def load(self):
+        """Load the recipe from Mealboard's site."""
+        print('Loading: {}'.format(self.name))
+
+
 def login(url, loginData):
     """Login into mealboard and create session.
 
